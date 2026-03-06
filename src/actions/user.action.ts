@@ -27,17 +27,28 @@ export async function syncUser() {
             return existingUser;
         }
 
-        console.log("syncUser: Creating new user in DB", userId);
-        const dbUser = await prisma.user.create({
-            data: {
+        const email = user.emailAddresses[0].emailAddress;
+        const name = `${user.firstName || ""} ${user.lastName || ""}`;
+        const username = user.username ?? email.split("@")[0];
+
+        console.log("syncUser: Upserting user in DB", userId);
+        const dbUser = await prisma.user.upsert({
+            where: { email },
+            update: {
                 clerkId: userId,
-                name: `${user.firstName || ""} ${user.lastName || ""}`,
-                username: user.username ?? user.emailAddresses[0].emailAddress.split("@")[0],
-                email: user.emailAddresses[0].emailAddress,
+                name,
+                username,
+                image: user.imageUrl,
+            },
+            create: {
+                clerkId: userId,
+                name,
+                username,
+                email,
                 image: user.imageUrl,
             },
         });
-        console.log("syncUser: Successfully created user", dbUser.id);
+        console.log("syncUser: Successfully upserted user", dbUser.id);
         return dbUser
     } catch (error) {
         console.error("CRITICAL ERROR in syncUser:", error);
